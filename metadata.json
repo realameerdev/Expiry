@@ -1,0 +1,8 @@
+{
+  "name": "Expiry - Never Miss an Expiry",
+  "description": "Track your documents, subscriptions, warranties and important dates before they expire.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

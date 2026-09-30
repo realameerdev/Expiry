@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --primary-blue: #1688D4;
+    --bright-blue: #2499E8;
+    --accent-lime: #C8FF35;
+    --black: #111111;
+    --soft-bg: #F7F8F8;
+    --muted-text: #6B7280;
+    --border-color: #E5E7EB;
+    --warning: #F59E0B;
+    --expired: #EF4444;
+  }
+
+  body {
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #111111;
+    background-color: #F7F8F8;
+    overflow-x: hidden;
+  }
+
+  .font-mono-tabular {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom subtle cloud float animation */
+@keyframes cloudDrift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-15px, -5px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-cloud-drift {
+  animation: cloudDrift 18s ease-in-out infinite;
+}
+
+/* Smooth continuous marquee animation for hero cards demo */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Smooth 3D card tilt container */
+.perspective-1000 {
+  perspective: 1200px;
+}
