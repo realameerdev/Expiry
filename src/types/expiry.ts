@@ -8,15 +8,24 @@ export type CategoryType =
   | 'Licences'
   | 'Memberships';
 
+export type DynamicExpiryStatus = 'Upcoming' | 'Approaching' | 'Critical' | 'Expires Today' | 'Expired';
+
 export interface ExpiryItem {
   id: string;
   title: string;
   category: CategoryType;
   expiryDate: string; // YYYY-MM-DD
-  reminderDaysBefore: number;
-  identifier?: string;
+  expiryTime: string; // HH:MM
+  timezone: string;
+  url?: string;
+  imageUrl?: string;
+  email?: string;
+  emailVerified?: boolean;
+  verificationToken?: string;
+  reminderSettings: number[]; // e.g. [30, 14, 7, 3, 1, 0]
   notes?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface DeletedItem {
@@ -24,25 +33,43 @@ export interface DeletedItem {
   deletedAt: number; // timestamp in ms
 }
 
-export type ExpiryStatus = 'safe' | 'approaching' | 'critical' | 'expired';
+export function calculateDaysLeft(expiryDateStr: string, expiryTimeStr?: string, timezone?: string): number {
+  try {
+    const [year, month, day] = expiryDateStr.split('-').map(Number);
+    const [hour, minute] = (expiryTimeStr || '23:59').split(':').map(Number);
+    
+    const targetDate = new Date(Date.UTC(year, month - 1, day, hour, minute));
+    const now = new Date();
 
-export function calculateDaysLeft(expiryDateStr: string): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const [year, month, day] = expiryDateStr.split('-').map(Number);
-  const targetDate = new Date(year, month - 1, day);
-  targetDate.setHours(0, 0, 0, 0);
-
-  const diffTime = targetDate.getTime() - today.getTime();
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffTime = targetDate.getTime() - now.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  } catch {
+    return 30;
+  }
 }
 
-export function getExpiryStatus(daysLeft: number): ExpiryStatus {
-  if (daysLeft < 0) return 'expired';
-  if (daysLeft <= 7) return 'critical';
-  if (daysLeft <= 30) return 'approaching';
-  return 'safe';
+export function getDynamicExpiryStatus(daysLeft: number): DynamicExpiryStatus {
+  if (daysLeft < 0) return 'Expired';
+  if (daysLeft === 0) return 'Expires Today';
+  if (daysLeft <= 7) return 'Critical';
+  if (daysLeft <= 30) return 'Approaching';
+  return 'Upcoming';
+}
+
+export function getStatusBadgeColor(status: DynamicExpiryStatus): { bg: string; text: string; border: string; accent: string } {
+  switch (status) {
+    case 'Expired':
+      return { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', accent: '#EF4444' };
+    case 'Expires Today':
+      return { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', accent: '#F43F5E' };
+    case 'Critical':
+      return { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200', accent: '#F59E0B' };
+    case 'Approaching':
+      return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', accent: '#2499E8' };
+    case 'Upcoming':
+    default:
+      return { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', accent: '#10B981' };
+  }
 }
 
 export function formatDaysLeftLabel(daysLeft: number): string {
