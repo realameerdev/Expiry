@@ -136,9 +136,12 @@ app.post('/api/items', upload.single('image'), async (req, res) => {
       } catch {}
     }
 
-    const email = body.email ? body.email.trim() : undefined;
+    const email = body.email ? body.email.trim() : '';
+    if (!email) {
+      return res.status(400).json({ error: 'Notification email is compulsory for every expiry item.' });
+    }
     const emailVerified = body.emailVerified === 'true' || body.emailVerified === true;
-    const verificationToken = email && !emailVerified ? Math.random().toString(36).substring(2) + Date.now().toString(36) : undefined;
+    const verificationToken = !emailVerified ? Math.random().toString(36).substring(2) + Date.now().toString(36) : undefined;
 
     const newItem: ExpiryItem = {
       id: `exp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -218,10 +221,13 @@ app.put('/api/items/:id', upload.single('image'), async (req, res) => {
       } catch {}
     }
 
-    const email = body.email !== undefined ? (body.email ? body.email.trim() : undefined) : existing.email;
+    const email = body.email !== undefined ? (body.email ? body.email.trim() : '') : existing.email;
+    if (!email) {
+      return res.status(400).json({ error: 'Notification email is compulsory.' });
+    }
     const emailChanged = email !== existing.email;
-    const emailVerified = emailChanged ? false : existing.emailVerified;
-    const verificationToken = emailChanged && email ? Math.random().toString(36).substring(2) + Date.now().toString(36) : existing.verificationToken;
+    const emailVerified = emailChanged ? false : (existing.emailVerified ?? false);
+    const verificationToken = emailChanged ? Math.random().toString(36).substring(2) + Date.now().toString(36) : existing.verificationToken;
 
     const updatedItem: ExpiryItem = {
       ...existing,

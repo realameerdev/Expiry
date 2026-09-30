@@ -52,7 +52,7 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
       if (saved) {
         const parsed: DeletedItem[] = JSON.parse(saved);
         const now = Date.now();
-        return parsed.filter((d) => now - d.deletedAt < 5 * 3600 * 1000); // 5 hours rule
+        return parsed.filter((d) => now - d.deletedAt < 5 * 3600 * 1000);
       }
     } catch {}
     return [];
@@ -65,10 +65,6 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
       return '';
     }
   });
-
-  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
-  const [emailInput, setEmailInput] = useState(userEmail);
-  const [emailSavedSuccess, setEmailSavedSuccess] = useState(false);
 
   // Trash Bin Drawer
   const [isTrashOpen, setIsTrashOpen] = useState(false);
@@ -95,6 +91,8 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
       if (res.ok) {
         const data = await res.json();
         setItems(data);
+      } else {
+        console.error('Failed to load items from API');
       }
     } catch (err) {
       console.error('Failed to fetch items:', err);
@@ -126,19 +124,25 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
 
       const res = await fetch(url, {
         method,
-        body: formData, // FormData handles text fields and file uploads securely
+        body: formData,
       });
 
       if (res.ok) {
         await fetchItems();
         setEditingItem(null);
       } else {
-        const errData = await res.json();
+        const text = await res.text();
+        let errData;
+        try {
+          errData = JSON.parse(text);
+        } catch {
+          errData = { error: text || 'Failed to save expiry item' };
+        }
         alert(errData.error || 'Failed to save expiry item');
       }
     } catch (err) {
       console.error('Save item error:', err);
-      alert('Network error while saving expiry item');
+      alert('Network error: Unable to connect to backend server. Please ensure the dev server is running.');
     }
   };
 
@@ -164,11 +168,11 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
       }
     } catch (err) {
       console.error('Delete item error:', err);
+      alert('Network error while deleting item.');
     }
   };
 
   const handleReverseDelete = async (itemToRestore: ExpiryItem) => {
-    // Re-create the item via POST
     const formData = new FormData();
     formData.append('title', itemToRestore.title);
     formData.append('category', itemToRestore.category);
@@ -254,28 +258,31 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
   const expiredCount = expiredItemsList.length;
 
   return (
-    <div className="min-h-screen bg-[#F7F8F8] text-[#111111] pb-24 relative">
+    <div className="min-h-screen bg-[#F7F8F8] text-[#111111] pb-24 relative overflow-x-hidden">
       
-      {/* Top Bar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-200/80 px-2.5 sm:px-8 py-2.5 sm:py-3.5 shadow-xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+      {/* Top Bar - Fully Responsive for Mobile */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-200/80 px-2 sm:px-8 py-2 sm:py-3.5 shadow-xs">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-1.5 sm:gap-4">
+          
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 min-w-0">
             <button
               onClick={onBackToLanding}
-              className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg border border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 text-xs font-semibold transition-colors cursor-pointer shrink-0"
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 text-xs font-semibold transition-colors cursor-pointer shrink-0"
             >
-              <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="hidden min-[400px]:inline">Back</span>
-              <span className="min-[400px]:hidden">Home</span>
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span className="hidden min-[360px]:inline">Back</span>
             </button>
 
-            <div className="h-4 sm:h-5 w-px bg-neutral-200" />
+            <div className="h-4 w-px bg-neutral-200 hidden min-[360px]:block" />
 
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#111111] flex items-center justify-center shrink-0">
-                <ExpiryLogo size={16} variant="white" />
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-[#111111] flex items-center justify-center shrink-0">
+                <ExpiryLogo size={14} variant="white" />
               </div>
-              <span className="font-extrabold text-sm sm:text-lg tracking-tight whitespace-nowrap">Expiry App</span>
+              <span className="font-extrabold text-xs sm:text-lg tracking-tight truncate">
+                <span className="hidden sm:inline">Expiry App</span>
+                <span className="sm:hidden">Expiry</span>
+              </span>
             </div>
           </div>
 
@@ -284,10 +291,11 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
             {deletedItems.length > 0 && (
               <button
                 onClick={() => setIsTrashOpen(true)}
-                className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold transition-colors cursor-pointer"
+                className="flex items-center gap-1 px-2 py-1.5 sm:py-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] sm:text-xs font-semibold transition-colors cursor-pointer shrink-0"
               >
                 <History className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                <span>Trash ({deletedItems.length})</span>
+                <span className="hidden min-[420px]:inline">Trash</span>
+                <span>({deletedItems.length})</span>
               </button>
             )}
 
@@ -296,10 +304,11 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
                 setEditingItem(null);
                 setIsModalOpen(true);
               }}
-              className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-full bg-[#1688D4] hover:bg-[#1277bd] text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer active:scale-98 shrink-0 whitespace-nowrap"
+              className="flex items-center gap-1 px-2.5 sm:px-5 py-1.5 sm:py-2.5 rounded-full bg-[#1688D4] hover:bg-[#1277bd] text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer active:scale-98 shrink-0 whitespace-nowrap"
             >
-              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
-              <span>Add Expiry</span>
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span className="hidden min-[380px]:inline">Add Expiry</span>
+              <span className="min-[380px]:hidden">Add</span>
             </button>
           </div>
         </div>
@@ -307,72 +316,72 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
 
       {/* Automated Warning Banner */}
       {expiringWithin30Days.length > 0 && (
-        <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-4 py-2.5 shadow-sm">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 text-xs sm:text-sm">
-            <div className="flex items-center gap-2 font-medium">
+        <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-3 sm:px-4 py-2.5 shadow-sm">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 text-xs sm:text-sm">
+            <div className="flex items-center gap-2 font-medium min-w-0">
               <AlertTriangle className="w-4 h-4 shrink-0 text-amber-100 animate-pulse" />
-              <span>
-                <strong>{expiringWithin30Days.length}</strong> item{expiringWithin30Days.length === 1 ? '' : 's'} expiring within 30 days. Take action to avoid disruption!
+              <span className="truncate">
+                <strong>{expiringWithin30Days.length}</strong> item{expiringWithin30Days.length === 1 ? '' : 's'} expiring within 30 days.
               </span>
             </div>
             <button
               onClick={() => setStatusFilter('Approaching')}
-              className="bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-lg text-xs font-bold backdrop-blur-xs transition-all cursor-pointer whitespace-nowrap"
+              className="bg-white/20 hover:bg-white/30 text-white px-2.5 py-1 rounded-lg text-xs font-bold backdrop-blur-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
             >
-              Review Approaching
+              Review
             </button>
           </div>
         </div>
       )}
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 pt-6 sm:pt-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 pt-5 sm:pt-8">
         
         {/* Metric Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 mb-5 sm:mb-8">
           <div
             onClick={() => setStatusFilter('all')}
-            className={`p-4 rounded-2xl bg-white border transition-all cursor-pointer shadow-xs hover:shadow-md ${
+            className={`p-3.5 sm:p-4 rounded-2xl bg-white border transition-all cursor-pointer shadow-xs hover:shadow-md ${
               statusFilter === 'all' ? 'border-[#1688D4] ring-2 ring-[#1688D4]/20' : 'border-neutral-200'
             }`}
           >
-            <div className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1">Total Tracked</div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-neutral-900 font-mono-tabular">{totalCount}</div>
+            <div className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1">Total Tracked</div>
+            <div className="text-xl sm:text-3xl font-extrabold text-neutral-900 font-mono-tabular">{totalCount}</div>
           </div>
 
           <div
             onClick={() => setStatusFilter('Upcoming')}
-            className={`p-4 rounded-2xl bg-white border transition-all cursor-pointer shadow-xs hover:shadow-md ${
+            className={`p-3.5 sm:p-4 rounded-2xl bg-white border transition-all cursor-pointer shadow-xs hover:shadow-md ${
               statusFilter === 'Upcoming' ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-neutral-200'
             }`}
           >
-            <div className="text-xs font-bold uppercase tracking-wider text-emerald-600 mb-1">Safe / Upcoming</div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-emerald-700 font-mono-tabular">{safeCount}</div>
+            <div className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600 mb-1">Safe / Upcoming</div>
+            <div className="text-xl sm:text-3xl font-extrabold text-emerald-700 font-mono-tabular">{safeCount}</div>
           </div>
 
           <div
             onClick={() => setStatusFilter('Approaching')}
-            className={`p-4 rounded-2xl bg-white border transition-all cursor-pointer shadow-xs hover:shadow-md ${
+            className={`p-3.5 sm:p-4 rounded-2xl bg-white border transition-all cursor-pointer shadow-xs hover:shadow-md ${
               statusFilter === 'Approaching' ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-neutral-200'
             }`}
           >
-            <div className="text-xs font-bold uppercase tracking-wider text-amber-600 mb-1">Approaching / Critical</div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-amber-700 font-mono-tabular">{approachingCount}</div>
+            <div className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-amber-600 mb-1">Approaching</div>
+            <div className="text-xl sm:text-3xl font-extrabold text-amber-700 font-mono-tabular">{approachingCount}</div>
           </div>
 
           <div
             onClick={() => setStatusFilter('Expired')}
-            className={`p-4 rounded-2xl bg-white border transition-all cursor-pointer shadow-xs hover:shadow-md ${
+            className={`p-3.5 sm:p-4 rounded-2xl bg-white border transition-all cursor-pointer shadow-xs hover:shadow-md ${
               statusFilter === 'Expired' ? 'border-red-500 ring-2 ring-red-500/20' : 'border-neutral-200'
             }`}
           >
-            <div className="text-xs font-bold uppercase tracking-wider text-red-600 mb-1">Expired</div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-red-700 font-mono-tabular">{expiredCount}</div>
+            <div className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-red-600 mb-1">Expired</div>
+            <div className="text-xl sm:text-3xl font-extrabold text-red-700 font-mono-tabular">{expiredCount}</div>
           </div>
         </div>
 
         {/* Search & Filters Bar */}
-        <div className="bg-white rounded-2xl border border-neutral-200 p-3.5 sm:p-4 mb-6 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
+        <div className="bg-white rounded-2xl border border-neutral-200 p-3 sm:p-4 mb-6 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
           
           {/* Search Input */}
           <div className="relative flex-1">
@@ -396,7 +405,7 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
                   : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
               }`}
             >
-              All Categories
+              All
             </button>
             {CATEGORIES_LIST.map((cat) => (
               <button
@@ -418,7 +427,7 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
         {loading ? (
           <div className="text-center py-20 text-neutral-400 font-medium">Loading your items from database...</div>
         ) : filteredItems.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-neutral-200 p-12 text-center max-w-md mx-auto my-12 shadow-xs">
+          <div className="bg-white rounded-3xl border border-neutral-200 p-8 sm:p-12 text-center max-w-md mx-auto my-12 shadow-xs">
             <div className="w-12 h-12 rounded-2xl bg-[#1688D4]/10 text-[#1688D4] flex items-center justify-center mx-auto mb-4">
               <Calendar className="w-6 h-6" />
             </div>
@@ -469,7 +478,7 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
                       </div>
                     )}
 
-                    <div className="p-5 sm:p-6">
+                    <div className="p-4 sm:p-6">
                       {/* Header Row */}
                       <div className="flex items-center justify-between gap-2 mb-3">
                         <span className="text-[11px] font-bold tracking-wider uppercase text-neutral-500 bg-neutral-100 px-2.5 py-1 rounded-lg">
@@ -493,7 +502,7 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
                       {/* Expiry Date & Time */}
                       <div className="mt-2 flex items-center gap-2 text-xs font-medium text-neutral-600">
                         <Calendar className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                        <span>Expires: {item.expiryDate} at {item.expiryTime || '23:59'} ({item.timezone})</span>
+                        <span className="truncate">Expires: {item.expiryDate} at {item.expiryTime || '23:59'}</span>
                       </div>
 
                       {/* Notes / Description */}
@@ -505,19 +514,19 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
 
                       {/* Email Status & Verification badge */}
                       {item.email && (
-                        <div className="mt-3 pt-3 border-t border-neutral-100 flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-1.5 text-neutral-600 truncate">
+                        <div className="mt-3 pt-3 border-t border-neutral-100 flex items-center justify-between text-xs gap-2">
+                          <div className="flex items-center gap-1.5 text-neutral-600 truncate min-w-0">
                             <Mail className="w-3.5 h-3.5 text-[#1688D4] shrink-0" />
                             <span className="truncate">{item.email}</span>
                           </div>
                           {item.emailVerified ? (
-                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">Verified</span>
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0">Verified</span>
                           ) : (
                             <button
                               onClick={() => handleRequestVerification(item.id)}
-                              className="text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200 cursor-pointer"
+                              className="text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200 cursor-pointer shrink-0"
                             >
-                              Verify Email
+                              Verify
                             </button>
                           )}
                         </div>
@@ -526,7 +535,7 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
                   </div>
 
                   {/* Card Footer */}
-                  <div className="px-5 sm:px-6 py-4 bg-neutral-50/75 border-t border-neutral-100 flex items-center justify-between">
+                  <div className="px-4 sm:px-6 py-3.5 bg-neutral-50/75 border-t border-neutral-100 flex items-center justify-between gap-2">
                     <div>
                       <div className="text-xs font-extrabold font-mono-tabular" style={{ color: badgeColors.accent }}>
                         {daysLabel}
@@ -536,7 +545,7 @@ export const ExpiryAppView: React.FC<ExpiryAppViewProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1 shrink-0">
                       {/* Open Link action button */}
                       {item.url && (
                         <a
